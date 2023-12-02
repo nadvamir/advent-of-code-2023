@@ -1,3 +1,4 @@
+use std::cmp::max;
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
@@ -20,6 +21,21 @@ impl Game {
         self.draws
             .iter()
             .all(|d| d.red <= 12 && d.green <= 13 && d.blue <= 14)
+    }
+
+    fn min_marbles(&self) -> Marbles {
+        let mut mmarb: Marbles = Default::default();
+        for m in self.draws.iter() {
+            mmarb.red = max(mmarb.red, m.red);
+            mmarb.green = max(mmarb.green, m.green);
+            mmarb.blue = max(mmarb.blue, m.blue);
+        }
+        mmarb
+    }
+
+    fn game_power(&self) -> i32 {
+        let mmarb = self.min_marbles();
+        mmarb.red * mmarb.green * mmarb.blue
     }
 }
 
@@ -60,18 +76,21 @@ fn parse_line(line: &str) -> Game {
     }
 }
 
-fn solve(lines: &[String]) -> i64 {
+fn solve(lines: &[String]) -> i32 {
     lines
         .iter()
         .map(|s| parse_line(s))
         .filter(|g| g.is_possible())
-        .map(|g| g.id as i64)
+        .map(|g| g.id)
         .sum()
 }
 
 // ----------------------------------------------------------------------------
-fn solve2(lines: &[String]) -> i64 {
-    0
+fn solve2(lines: &[String]) -> i32 {
+    lines
+        .iter()
+        .map(|s| parse_line(s).game_power())
+        .sum()
 }
 
 // ----------------------------------------------------------------------------
@@ -106,6 +125,20 @@ mod tests {
     }
 
     #[test]
+    fn test_min_marbles() {
+        let game = parse_line("Game 1: 3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green");
+        assert_eq!(game.id, 1);
+        assert_eq!(
+            game.min_marbles(),
+            Marbles {
+                red: 4,
+                green: 2,
+                blue: 6
+            }
+        );
+    }
+
+    #[test]
     fn test_solution1() {
         let input = r"
 Game 1: 3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green
@@ -130,7 +163,7 @@ Game 5: 6 red, 1 blue, 3 green; 2 blue, 1 red, 2 green
 ";
         let lines: Vec<String> = input.lines().map(|line| line.to_string()).collect();
         let result = solve2(&lines);
-        assert_eq!(result, 281);
+        assert_eq!(result, 2286);
     }
 }
 
