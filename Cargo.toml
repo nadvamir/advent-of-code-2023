@@ -2,4 +2,5 @@
 members = [
     "aoc01",
     "aoc02",
+    "aoc03",
 ]
