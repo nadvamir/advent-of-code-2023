@@ -1,6 +1,7 @@
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
+use std::collections::HashSet;
 
 #[derive(Default, Clone, Copy)]
 struct Number {
@@ -10,6 +11,7 @@ struct Number {
 
 struct Schematic {
     numbers: Vec<Number>,
+    gears: Vec<i32>,
     grid: Vec<Vec<usize>>, // mapping from the coordinates to the index in numbers
 }
 
@@ -17,6 +19,7 @@ impl Schematic {
     fn new(lines: &[String]) -> Schematic {
         let mut schematic = Schematic {
             numbers: vec![Default::default()],
+            gears: vec![],
             grid: vec![vec![0; lines[0].len()]; lines.len()],
         };
         schematic.parse_input(lines);
@@ -51,7 +54,12 @@ impl Schematic {
     fn mark_parts_in_line(&mut self, row: usize, line: &str) {
         for (col, c) in line.chars().enumerate() {
             if !c.is_numeric() && c != '.' {
-                self.mark_parts(row, col);
+                let num_parts = self.mark_parts(row, col, |n| n.is_part = true);
+                if c == '*' && num_parts == 2 {
+                    let mut gear: i32 = 1;
+                    self.mark_parts(row, col, |n| gear *= n.val);
+                    self.gears.push(gear);
+                }
             }
         }
     }
@@ -65,18 +73,29 @@ impl Schematic {
         }
     }
 
-    fn mark_parts(&mut self, row: usize, col: usize) {
+    fn mark_parts<F>(&mut self, row: usize, col: usize, mut func: F) -> usize
+    where
+        F: FnMut(&mut Number),
+    {
         let offsets = [-1, 0, 1];
+        let mut parts: HashSet<*const Number> = HashSet::new();
 
         for &di in &offsets {
             for &dj in &offsets {
-                if let (Some(i), Some(j)) = (row.checked_add_signed(di), col.checked_add_signed(dj)) {
-                    if i < self.grid.len() && j < self.grid[i].len() {
-                        self.numbers[self.grid[i][j]].is_part = true;
+                if let (Some(i), Some(j)) = (row.checked_add_signed(di), col.checked_add_signed(dj))
+                {
+                    if i < self.grid.len()
+                        && j < self.grid[i].len()
+                        && self.numbers[self.grid[i][j]].val > 0
+                        && parts.insert((&self.numbers[self.grid[i][j]]) as *const Number)
+                    {
+                        func(&mut self.numbers[self.grid[i][j]]);
                     }
                 }
-            }
+            }  
         }
+
+        parts.len()
     }
 }
 
@@ -93,7 +112,9 @@ fn solve(lines: &[String]) -> i32 {
 
 // ----------------------------------------------------------------------------
 fn solve2(lines: &[String]) -> i32 {
-    0
+    let schematic = Schematic::new(lines);
+
+    schematic.gears.iter().sum()
 }
 
 // ----------------------------------------------------------------------------
@@ -153,7 +174,7 @@ mod tests {
 ";
         let lines: Vec<String> = input.lines().map(|line| line.to_string()).collect();
         let result = solve2(&lines);
-        assert_eq!(result, 0);
+        assert_eq!(result, 467835);
     }
 }
 
