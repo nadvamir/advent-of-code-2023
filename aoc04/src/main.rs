@@ -23,7 +23,6 @@ fn parse_card(line: &str) -> Card {
             .split_whitespace()
             .map(|n| n.parse().expect("Expect numbers"))
             .collect();
-        winning.intersection(&yours).collect::<Vec<&i32>>().len();
         Card { id, winning, yours }
     } else {
         Default::default()
@@ -34,12 +33,7 @@ fn solve(lines: &[String]) -> i32 {
     lines
         .iter()
         .map(|s| parse_card(s))
-        .map(|c| {
-            c.winning
-                .intersection(&c.yours)
-                .collect::<Vec<&i32>>()
-                .len() as i32
-        })
+        .map(|c| c.winning.intersection(&c.yours).count() as i32)
         .filter(|matches| *matches > 0)
         .map(|matches| 1 << (matches - 1))
         .sum()
@@ -47,7 +41,21 @@ fn solve(lines: &[String]) -> i32 {
 
 // ----------------------------------------------------------------------------
 fn solve2(lines: &[String]) -> i32 {
-    0
+    let mut cards: Vec<usize> = vec![1; lines.len()];
+    for (i, win) in lines
+        .iter()
+        .map(|s| parse_card(s))
+        .map(|c| c.winning.intersection(&c.yours).count())
+        .enumerate()
+    {
+        if cards[i] == 0 && win == 0 {
+            break;
+        }
+        for j in i + 1..i + win + 1 {
+            cards[j] += cards[i]
+        }
+    }
+    cards.iter().sum::<usize>() as i32
 }
 
 // ----------------------------------------------------------------------------
@@ -94,7 +102,7 @@ Card 6: 31 18 13 56 72 | 74 77 10 23 35 67 36 11
 ";
         let lines: Vec<String> = input.lines().map(|line| line.to_string()).collect();
         let result = solve2(&lines);
-        assert_eq!(result, 0);
+        assert_eq!(result, 30);
     }
 }
 
