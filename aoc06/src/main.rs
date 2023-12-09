@@ -1,43 +1,65 @@
+use bigdecimal::FromPrimitive;
+use bigdecimal::{BigDecimal, ToPrimitive};
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
+use std::str::FromStr;
 
-fn stoi(s: &str) -> i32 {
-    s.parse::<i32>().unwrap_or_default()
+fn stoi(s: &str) -> BigDecimal {
+    BigDecimal::from_str(s).unwrap()
 }
 
-fn parse_races(lines: &[String]) -> Vec<(i32, i32)> {
-    lines[0][10..].split_whitespace().map(stoi).zip(lines[1][10..].split_whitespace().map(stoi)).collect()
+fn parse_races(lines: &[String]) -> Vec<(BigDecimal, BigDecimal)> {
+    lines[0][10..]
+        .split_whitespace()
+        .map(stoi)
+        .zip(lines[1][10..].split_whitespace().map(stoi))
+        .collect()
 }
 
-fn solve_eq(time: f64, dist: f64) -> (f64, f64) {
-    let discr = (time * time - 4.0 * dist).sqrt();
-    ((-time + discr) / -2.0, (-time - discr) / -2.0)
+fn solve_eq(time: &BigDecimal, dist: &BigDecimal) -> (f64, f64) {
+    let four = BigDecimal::from_i32(4).unwrap();
+    let two = BigDecimal::from_i32(2).unwrap();
+
+    let discr = (time * time - dist * &four).sqrt().unwrap();
+    let (x0, x1) = ((time - &discr) / &two, (time + &discr) / &two);
+    (x0.to_f64().unwrap(), x1.to_f64().unwrap())
 }
 
-fn calc_n_ways(x0: f64, x1: f64) -> i32 {
-    (x1.ceil() - x0.floor() - 1.0) as i32
+fn calc_n_ways(x0: f64, x1: f64) -> i64 {
+    (x1.ceil() - x0.floor() - 1.0) as i64
 }
 
-fn solve(lines: &[String]) -> i32 {
+fn solve(lines: &[String]) -> i64 {
     parse_races(lines)
         .iter()
-        .map(|(t, d)| solve_eq(*t as f64, *d as f64))
+        .map(|(t, d)| solve_eq(t, d))
         .map(|(x0, x1)| calc_n_ways(x0, x1))
         .reduce(|acc, n| acc * n)
         .unwrap_or_default()
 }
 
+fn parse_races2(lines: &[String]) -> (BigDecimal, BigDecimal) {
+    let remove_whitespace = |s: &str| s.chars().filter(|c| !c.is_whitespace()).collect::<String>();
+    (
+        BigDecimal::from_str(&remove_whitespace(&lines[0][10..])).unwrap(),
+        BigDecimal::from_str(&remove_whitespace(&lines[1][10..])).unwrap(),
+    )
+}
+
 // ----------------------------------------------------------------------------
-fn solve2(lines: &[String]) -> i32 {
-    0
+fn solve2(lines: &[String]) -> i64 {
+    let (t, d) = parse_races2(lines);
+    let (x0, x1) = solve_eq(&t, &d);
+    println!("{} {} -> {}, {}", &t, &d, x0, x1);
+    calc_n_ways(x0, x1)
 }
 
 // ----------------------------------------------------------------------------
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_calc_n_ways() {
         assert_eq!(calc_n_ways(1.7, 5.3), 4);
@@ -62,7 +84,7 @@ Distance:  9  40  200
 ";
         let lines: Vec<String> = input.lines().map(|line| line.to_string()).collect();
         let result = solve2(&lines);
-        assert_eq!(result, 0);
+        assert_eq!(result, 71503);
     }
 }
 
