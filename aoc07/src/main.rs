@@ -30,12 +30,31 @@ lazy_static! {
     static ref CARD_VALS: HashMap<char, i64> = MAPPING.iter().map(|&(c, v)| (c, v)).collect();
 }
 
-fn compare(a: &Hand, b: &Hand) -> Ordering {
+lazy_static! {
+    static ref MAPPING2: Vec<(char, i64)> = vec![
+        ('A', 14),
+        ('K', 13),
+        ('Q', 12),
+        ('T', 10),
+        ('9', 9),
+        ('8', 8),
+        ('7', 7),
+        ('6', 6),
+        ('5', 5),
+        ('4', 4),
+        ('3', 3),
+        ('2', 2),
+        ('J', 1),
+    ];
+    static ref CARD_VALS2: HashMap<char, i64> = MAPPING2.iter().map(|&(c, v)| (c, v)).collect();
+}
+
+fn compare_with_mapping(a: &Hand, b: &Hand, mapping: &HashMap<char, i64>) -> Ordering {
     if a.power == b.power {
         for (l, r) in a.cards.chars().zip(b.cards.chars()) {
-            if CARD_VALS.get(&l).unwrap() < CARD_VALS.get(&r).unwrap() {
+            if mapping.get(&l).unwrap() < mapping.get(&r).unwrap() {
                 return Ordering::Less;
-            } else if CARD_VALS.get(&l).unwrap() > CARD_VALS.get(&r).unwrap() {
+            } else if mapping.get(&l).unwrap() > mapping.get(&r).unwrap() {
                 return Ordering::Greater;
             }
         }
@@ -45,11 +64,29 @@ fn compare(a: &Hand, b: &Hand) -> Ordering {
     }
 }
 
-fn calc_power(cards: &str) -> usize {
+fn compare(a: &Hand, b: &Hand) -> Ordering {
+    compare_with_mapping(a, b, &CARD_VALS)
+}
+
+fn compare2(a: &Hand, b: &Hand) -> Ordering {
+    compare_with_mapping(a, b, &CARD_VALS2)
+}
+
+fn calc_power(cards: &str, has_jokers: bool) -> usize {
     let mut map: HashMap<char, usize> = Default::default();
     for c in cards.chars() {
         map.insert(c, map.get(&c).unwrap_or(&0) + 1);
     }
+
+    if has_jokers {
+        let jokers = *map.get(&'J').unwrap_or(&0);
+        if map.len() > 1 {
+            map.remove(&'J');
+            let (k, v) = map.iter().max_by(|(_, v1), (_, v2)| v1.cmp(v2)).unwrap();
+            map.insert(*k, v + jokers);
+        }
+    }
+
     match map.len() {
         1 => 6,
         2 => {
@@ -71,18 +108,18 @@ fn calc_power(cards: &str) -> usize {
     }
 }
 
-fn parse_hand(line: &str) -> Hand {
+fn parse_hand(line: &str, has_jokers: bool) -> Hand {
     let line: Vec<&str> = line.split_whitespace().collect();
     let (hand, bid) = (line[0], line[1]);
     Hand {
-        power: calc_power(hand),
+        power: calc_power(hand, has_jokers),
         cards: hand.to_string(),
         bid: bid.parse::<usize>().unwrap(),
     }
 }
 
 fn solve(lines: &[String]) -> usize {
-    let mut hands: Vec<Hand> = lines.iter().map(|s| parse_hand(s)).collect();
+    let mut hands: Vec<Hand> = lines.iter().map(|s| parse_hand(s, false)).collect();
     hands.sort_by(|a, b| compare(a, b));
     let (_, res) = hands
         .iter()
@@ -95,7 +132,15 @@ fn solve(lines: &[String]) -> usize {
 
 // ----------------------------------------------------------------------------
 fn solve2(lines: &[String]) -> usize {
-    0
+    let mut hands: Vec<Hand> = lines.iter().map(|s| parse_hand(s, true)).collect();
+    hands.sort_by(|a, b| compare2(a, b));
+    let (_, res) = hands
+        .iter()
+        .enumerate()
+        .map(|(i, h)| (i, h.bid))
+        .reduce(|(_, bids), (i, bid)| (i, bids + (i + 1) * bid))
+        .unwrap();
+    res
 }
 
 // ----------------------------------------------------------------------------
@@ -105,13 +150,25 @@ mod tests {
 
     #[test]
     fn test_calc_power() {
-        assert_eq!(calc_power("AAAAA"), 6);
-        assert_eq!(calc_power("AAJAA"), 5);
-        assert_eq!(calc_power("AJJAA"), 4);
-        assert_eq!(calc_power("AJ9AA"), 3);
-        assert_eq!(calc_power("AJ99A"), 2);
-        assert_eq!(calc_power("AJ98A"), 1);
-        assert_eq!(calc_power("AJ98T"), 0);
+        assert_eq!(calc_power("AAAAA", false), 6);
+        assert_eq!(calc_power("AAJAA", false), 5);
+        assert_eq!(calc_power("AJJAA", false), 4);
+        assert_eq!(calc_power("AJ9AA", false), 3);
+        assert_eq!(calc_power("AJ99A", false), 2);
+        assert_eq!(calc_power("AJ98A", false), 1);
+        assert_eq!(calc_power("AJ98T", false), 0);
+    }
+
+    #[test]
+    fn test_calc_power2() {
+        assert_eq!(calc_power("AAAAA", true), 6);
+        assert_eq!(calc_power("AAJAA", true), 6);
+        assert_eq!(calc_power("AJJAA", true), 6);
+        assert_eq!(calc_power("KTJJT", true), 5);
+        assert_eq!(calc_power("AJ9AA", true), 5);
+        assert_eq!(calc_power("AJ99A", true), 4);
+        assert_eq!(calc_power("AJ98A", true), 3);
+        assert_eq!(calc_power("AJ98T", true), 1);
     }
 
     #[test]
@@ -137,7 +194,7 @@ QQQJA 483
 ";
         let lines: Vec<String> = input.lines().map(|line| line.to_string()).collect();
         let result = solve2(&lines);
-        assert_eq!(result, 0);
+        assert_eq!(result, 5905);
     }
 }
 
