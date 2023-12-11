@@ -8,7 +8,7 @@ fn parse_line(line: &String) -> Vec<i64> {
         .collect()
 }
 
-fn get_next(nums: &Vec<i64>) -> i64 {
+fn calculate_differences(nums: &Vec<i64>) -> Vec<Vec<i64>> {
     let mut iter_diffs: Vec<Vec<i64>> = Default::default();
     iter_diffs.push(nums.clone());
     loop {
@@ -27,7 +27,11 @@ fn get_next(nums: &Vec<i64>) -> i64 {
             .collect();
         iter_diffs.push(diffs);
     }
+    iter_diffs
+}
 
+fn get_next(nums: &Vec<i64>) -> i64 {
+    let mut iter_diffs = calculate_differences(nums);
     for i in (1..iter_diffs.len()).rev() {
         let next = iter_diffs[i - 1].last().unwrap() + iter_diffs[i].last().unwrap();
         iter_diffs[i - 1].push(next);
@@ -44,9 +48,21 @@ fn solve(lines: &[String]) -> i64 {
 }
 
 // ----------------------------------------------------------------------------
-fn solve2(lines: &[String]) -> i64 {
-    0
+fn get_prev(nums: &Vec<i64>) -> i64 {
+    let mut iter_diffs = calculate_differences(nums);
+    for i in (1..iter_diffs.len()).rev() {
+        let prev = iter_diffs[i - 1].first().unwrap() - iter_diffs[i].first().unwrap();
+        iter_diffs[i - 1].insert(0, prev);
+    }
+    *iter_diffs[0].first().unwrap()
 }
+
+fn solve2(lines: &[String]) -> i64 {
+    lines
+        .iter()
+        .map(parse_line)
+        .map(|nums| get_prev(&nums))
+        .sum()}
 
 // ----------------------------------------------------------------------------
 #[cfg(test)]
@@ -72,7 +88,7 @@ mod tests {
 ";
         let lines: Vec<String> = input.lines().map(|line| line.to_string()).collect();
         let result = solve2(&lines);
-        assert_eq!(result, 0);
+        assert_eq!(result, 2);
     }
 }
 
