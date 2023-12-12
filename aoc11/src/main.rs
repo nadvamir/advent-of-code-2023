@@ -14,10 +14,14 @@ fn parse_stars(lines: &[String]) -> Vec<(usize, usize)> {
     res
 }
 
-fn expand<F, FM>(stars: &mut Vec<(usize, usize)>, coord_accessor: F, coord_accessor_mut: &mut FM) 
-where
+fn expand<F, FM>(
+    stars: &mut Vec<(usize, usize)>,
+    coord_accessor: F,
+    coord_accessor_mut: &mut FM,
+    factor: usize,
+) where
     F: Fn(&(usize, usize)) -> &usize,
-    FM: FnMut(&mut (usize, usize)) -> &mut usize
+    FM: FnMut(&mut (usize, usize)) -> &mut usize,
 {
     stars.sort_by(|a, b| coord_accessor(a).cmp(coord_accessor(b)));
     let mut shift: usize = 0;
@@ -25,7 +29,9 @@ where
     for star in stars.iter_mut() {
         let coord = coord_accessor_mut(star);
         if let Some(diff) = coord.checked_sub(last + 1) {
-            shift += diff;
+            if diff > 0 {
+                shift += diff * factor - 1;
+            }
         }
         last = *coord;
         *coord += shift;
@@ -40,7 +46,7 @@ fn manhattan_dist(s1: &(usize, usize), s2: &(usize, usize)) -> usize {
 fn sum_dists(stars: &Vec<(usize, usize)>) -> usize {
     let mut dist: usize = 0;
     for a in 0..stars.len() {
-        for b in a+1..stars.len() {
+        for b in a + 1..stars.len() {
             dist += manhattan_dist(&stars[a], &stars[b]);
         }
     }
@@ -49,14 +55,17 @@ fn sum_dists(stars: &Vec<(usize, usize)>) -> usize {
 
 fn solve(lines: &[String]) -> usize {
     let mut stars = parse_stars(lines);
-    expand(&mut stars, |(i, _)| i, &mut |(i, _)| i);
-    expand(&mut stars, |(_, j)| j, &mut |(_, j)| j);
+    expand(&mut stars, |(i, _)| i, &mut |(i, _)| i, 2);
+    expand(&mut stars, |(_, j)| j, &mut |(_, j)| j, 2);
     sum_dists(&stars)
 }
 
 // ----------------------------------------------------------------------------
-fn solve2(lines: &[String]) -> usize {
-    0
+fn solve2(lines: &[String], factor: usize) -> usize {
+    let mut stars = parse_stars(lines);
+    expand(&mut stars, |(i, _)| i, &mut |(i, _)| i, factor);
+    expand(&mut stars, |(_, j)| j, &mut |(_, j)| j, factor);
+    sum_dists(&stars)
 }
 
 // ----------------------------------------------------------------------------
@@ -81,6 +90,7 @@ mod tests {
         let result = solve(&lines);
         assert_eq!(result, 374);
     }
+
     #[test]
     fn test_solution2() {
         let input = r"...#......
@@ -95,8 +105,10 @@ mod tests {
 #...#.....
 ";
         let lines: Vec<String> = input.lines().map(|line| line.to_string()).collect();
-        let result = solve2(&lines);
-        assert_eq!(result, 0);
+        let result = solve2(&lines, 10);
+        assert_eq!(result, 1030);
+        let result = solve2(&lines, 100);
+        assert_eq!(result, 8410);
     }
 }
 
@@ -115,7 +127,7 @@ fn main() -> io::Result<()> {
     let lines = read_lines(filename)?;
 
     println!("Answer, part 1: {}", solve(&lines));
-    println!("Answer, part 2: {}", solve2(&lines));
+    println!("Answer, part 2: {}", solve2(&lines, 1000000));
 
     Ok(())
 }
