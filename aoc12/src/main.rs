@@ -100,8 +100,25 @@ fn solve(lines: &[String]) -> usize {
 }
 
 // ----------------------------------------------------------------------------
+fn extend_map((line, springs): (String, Vec<usize>)) -> (String, Vec<usize>) {
+    let mut pattern = line.clone();
+    let mut consec_springs = springs.clone();
+
+    for _ in 1..5 {
+        pattern = format!("{}?{}", pattern, line);
+        consec_springs.extend_from_slice(&springs);
+    }
+
+    (pattern, consec_springs)
+}
+
 fn solve2(lines: &[String]) -> usize {
-    0
+    lines
+        .iter()
+        .map(parse_line)
+        .map(extend_map)
+        .map(|(p, c)| num_arrangements(&p, &c, (0, 0)))
+        .sum()
 }
 
 // ----------------------------------------------------------------------------
@@ -112,6 +129,12 @@ mod tests {
     #[test]
     fn test_num_arrangements() {
         assert_eq!(num_arrangements("??.??", &Vec::from(vec![1, 1]), (0, 0)), 4);
+    }
+
+    #[test]
+    fn test_parse_line2() {
+        let (pattern, _) = extend_map(parse_line(&"???.### 1,1,3".to_string()));
+        assert_eq!(pattern, "???.###????.###????.###????.###????.###");
     }
 
     #[test]
@@ -153,7 +176,7 @@ mod tests {
 ";
         let lines: Vec<String> = input.lines().map(|line| line.to_string()).collect();
         let result = solve2(&lines);
-        assert_eq!(result, 0);
+        assert_eq!(result, 525152);
     }
 }
 
