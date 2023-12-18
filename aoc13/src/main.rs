@@ -46,8 +46,9 @@ fn mirrored_i(mirror: &Vec<&String>, j: usize, pivot: usize) -> bool {
     }
 }
 
-fn vertical(mirror: &Vec<&String>) -> usize {
+fn vertical(mirror: &Vec<&String>, banned: usize) -> usize {
     let mut axes: HashSet<usize> = (0..mirror[0].len() - 1).collect();
+    axes.remove(&banned);
     let mut i: usize = 0;
     while i < mirror.len() && !axes.is_empty() {
         let axes_at_i = axes.clone();
@@ -66,8 +67,9 @@ fn vertical(mirror: &Vec<&String>) -> usize {
     }
 }
 
-fn horizontal(mirror: &Vec<&String>) -> usize {
+fn horizontal(mirror: &Vec<&String>, banned: usize) -> usize {
     let mut axes: HashSet<usize> = (0..mirror.len() - 1).collect();
+    axes.remove(&banned);
     let mut j: usize = 0;
     while j < mirror[0].len() && !axes.is_empty() {
         let axes_at_j = axes.clone();
@@ -79,7 +81,7 @@ fn horizontal(mirror: &Vec<&String>) -> usize {
         j += 1;
     }
 
-    if axes.is_empty() {
+    if axes.is_empty() || axes.len() > 1 {
         return 0;
     } else {
         return *axes.iter().next().unwrap() + 1;
@@ -87,7 +89,7 @@ fn horizontal(mirror: &Vec<&String>) -> usize {
 }
 
 fn calc_reflection(mirror: &Vec<&String>) -> usize {
-    vertical(mirror) + horizontal(mirror) * 100
+    vertical(mirror, 1000) + horizontal(mirror, 1000) * 100
 }
 
 fn solve(lines: &[String]) -> usize {
@@ -95,8 +97,38 @@ fn solve(lines: &[String]) -> usize {
 }
 
 // ----------------------------------------------------------------------------
-fn solve2(lines: &[String]) -> usize {
+fn calc_reflection_smudged(mirror: &Vec<&String>) -> usize {
+    let (ov, oh) = (vertical(mirror, 1000), horizontal(mirror, 1000));
+    let (ov, oh) = (if ov > 0 {ov} else {1000}, if oh > 0 { oh } else { 1000 });
+    let flip = |c| if c == b'.' { b'#' } else { b'.' };
+
+    let canvas: Vec<String> = mirror.iter().map(|s| (*s).clone()).collect();
+
+    for i in 0..canvas.len() {
+        for j in 0..canvas[i].len() {
+            let mut line = canvas[i].clone();
+            let bytes = unsafe { line.as_bytes_mut() };
+            bytes[j] = flip(bytes[j]);
+
+            let mut temp_canvas = canvas.clone();
+            temp_canvas[i] = line;
+
+            let new_mirror: Vec<&String> = temp_canvas.iter().collect();
+            let (nv, nh) = (vertical(&new_mirror, ov-1), horizontal(&new_mirror, oh-1));
+
+            if nv > 0 || nh > 0 {
+                return nv + nh * 100;
+            }
+        }
+    }
+
     0
+}
+fn solve2(lines: &[String]) -> usize {
+    lines_into_mirrors(lines)
+        .iter()
+        .map(calc_reflection_smudged)
+        .sum()
 }
 
 // ----------------------------------------------------------------------------
@@ -147,7 +179,22 @@ mod tests {
 ";
         let lines: Vec<String> = input.lines().map(|line| line.to_string()).collect();
         let result = solve2(&lines);
-        assert_eq!(result, 0);
+        assert_eq!(result, 400);
+    }
+
+    #[test]
+    fn test_solution2_2() {
+        let input = r"#..##..#..##.
+#.####.##.##.
+.#.##.#.#....
+.#.##.#..####
+###..#.#.....
+..#..#..##..#
+.#.##.#..#..#
+";
+        let lines: Vec<String> = input.lines().map(|line| line.to_string()).collect();
+        let result = solve2(&lines);
+        assert_eq!(result, 4);
     }
 }
 
