@@ -20,11 +20,11 @@ fn get_next((i, j): (i32, i32), dir: Direction) -> ((i32, i32), Direction) {
     }
 }
 
-fn detect_energised(grid: &[String]) -> HashSet<(usize, usize)> {
+fn detect_energised(grid: &[String], init: ((i32, i32), Direction)) -> HashSet<(usize, usize)> {
     let mut energised: HashSet<(usize, usize)> = Default::default();
     let mut visited: HashSet<(i32, i32, Direction)> = Default::default();
     let mut q = VecDeque::new();
-    q.push_back(((0 as i32, 0 as i32), Direction::E));
+    q.push_back(init);
 
     while !q.is_empty() {
         let ((i, j), dir) = q.pop_front().unwrap();
@@ -47,7 +47,7 @@ fn detect_energised(grid: &[String]) -> HashSet<(usize, usize)> {
                     q.push_back(get_next((i, j), Direction::E));
                     q.push_back(get_next((i, j), Direction::W));
                 }
-            },
+            }
             b'|' => {
                 if dir == Direction::N || dir == Direction::S {
                     q.push_back(get_next((i, j), dir));
@@ -55,7 +55,7 @@ fn detect_energised(grid: &[String]) -> HashSet<(usize, usize)> {
                     q.push_back(get_next((i, j), Direction::N));
                     q.push_back(get_next((i, j), Direction::S));
                 }
-            },
+            }
             b'/' => {
                 let dir = match dir {
                     Direction::N => Direction::E,
@@ -64,7 +64,7 @@ fn detect_energised(grid: &[String]) -> HashSet<(usize, usize)> {
                     Direction::W => Direction::S,
                 };
                 q.push_back(get_next((i, j), dir));
-            },
+            }
             b'\\' => {
                 let dir = match dir {
                     Direction::N => Direction::W,
@@ -73,7 +73,7 @@ fn detect_energised(grid: &[String]) -> HashSet<(usize, usize)> {
                     Direction::E => Direction::S,
                 };
                 q.push_back(get_next((i, j), dir));
-            },
+            }
             _ => q.push_back(get_next((i, j), dir)),
         }
     }
@@ -82,13 +82,42 @@ fn detect_energised(grid: &[String]) -> HashSet<(usize, usize)> {
 }
 
 fn solve(lines: &[String]) -> usize {
-    let energised = detect_energised(lines);
+    let energised = detect_energised(lines, ((0, 0), Direction::E));
     energised.len()
 }
 
 // ----------------------------------------------------------------------------
 fn solve2(lines: &[String]) -> usize {
-    0
+    let mut max_energised = 0;
+    for i in 0..lines.len() {
+        for j in 0..lines[0].len() {
+            if i == 0 {
+                max_energised = std::cmp::max(
+                    max_energised,
+                    detect_energised(lines, ((i as i32, j as i32), Direction::S)).len(),
+                );
+            }
+            if j == 0 {
+                max_energised = std::cmp::max(
+                    max_energised,
+                    detect_energised(lines, ((i as i32, j as i32), Direction::E)).len(),
+                );
+            }
+            if i == lines.len() - 1 {
+                max_energised = std::cmp::max(
+                    max_energised,
+                    detect_energised(lines, ((i as i32, j as i32), Direction::N)).len(),
+                );
+            }
+            if j == lines[0].len() - 1 {
+                max_energised = std::cmp::max(
+                    max_energised,
+                    detect_energised(lines, ((i as i32, j as i32), Direction::W)).len(),
+                );
+            }
+        }
+    }
+    max_energised
 }
 
 // ----------------------------------------------------------------------------
@@ -127,7 +156,7 @@ mod tests {
 ..//.|....";
         let lines: Vec<String> = input.lines().map(|line| line.to_string()).collect();
         let result = solve2(&lines);
-        assert_eq!(result, 0);
+        assert_eq!(result, 51);
     }
 }
 
