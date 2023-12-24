@@ -12,67 +12,83 @@ enum Direction {
     W,
 }
 
-fn directions(dir: Direction, momentum: usize) -> Vec<(Direction, usize)> {
+fn directions(
+    dir: Direction,
+    min_mom: usize,
+    max_mom: usize,
+    min_momentum: usize,
+    max_momentum: usize,
+) -> Vec<(Direction, usize, usize)> {
     let mut dirs = vec![];
 
-    if momentum > 0 {
-        dirs.push((dir, momentum - 1));
+    if min_mom > 0 {
+        dirs.push((dir, min_mom - 1, max_mom - 1));
+        return dirs;
     }
-    
+
+    if max_mom > 0 {
+        dirs.push((dir, 0, max_mom - 1));
+    }
+
+    let nmin = if min_momentum > 0 { min_momentum - 1 } else { 0 };
+    let nmax = max_momentum - 1;
+
     match dir {
         Direction::N => {
-            dirs.push((Direction::W, 2));
-            dirs.push((Direction::E, 2));
+            dirs.push((Direction::W, nmin, nmax));
+            dirs.push((Direction::E, nmin, nmax));
         }
         Direction::E => {
-            dirs.push((Direction::N, 2));
-            dirs.push((Direction::S, 2));
+            dirs.push((Direction::N, nmin, nmax));
+            dirs.push((Direction::S, nmin, nmax));
         }
         Direction::S => {
-            dirs.push((Direction::W, 2));
-            dirs.push((Direction::E, 2));
+            dirs.push((Direction::W, nmin, nmax));
+            dirs.push((Direction::E, nmin, nmax));
         }
         Direction::W => {
-            dirs.push((Direction::N, 2));
-            dirs.push((Direction::S, 2));
+            dirs.push((Direction::N, nmin, nmax));
+            dirs.push((Direction::S, nmin, nmax));
         }
     }
 
     dirs
 }
 
-fn solve(lines: &[String]) -> usize {
-    let mut q: BinaryHeap<Reverse<(usize, Direction, usize, usize, usize)>> = BinaryHeap::new();
-    let mut visited: HashSet<(usize, usize, Direction, usize)> = HashSet::new();
+fn dijkstra(lines: &[String], min_momentum: usize, max_momentum: usize) -> usize {
+    let mut q: BinaryHeap<Reverse<(usize, Direction, usize, usize, usize, usize)>> =
+        BinaryHeap::new();
+    let mut visited: HashSet<(usize, usize, Direction, usize, usize)> = HashSet::new();
 
     let n = lines.len();
     let m = lines[0].len();
 
     let loss_at = |i: usize, j: usize| -> usize { (lines[i].as_bytes()[j] - b'0') as usize };
 
-    q.push(Reverse((0, Direction::E, 3, 0, 0)));
+    q.push(Reverse((0, Direction::E, min_momentum, max_momentum, 0, 0)));
+    q.push(Reverse((0, Direction::S, min_momentum, max_momentum, 0, 0)));
 
     while !q.is_empty() {
-        let Reverse((cost, dir, momentum, i, j)) = q.pop().unwrap();
+        let Reverse((cost, dir, min_mom, max_mom, i, j)) = q.pop().unwrap();
 
-        if visited.contains(&(i, j, dir, momentum)) {
+        if visited.contains(&(i, j, dir, min_mom, max_mom)) {
             continue;
         }
-        visited.insert((i, j, dir, momentum));
+        visited.insert((i, j, dir, min_mom, max_mom));
 
-        if i == n - 1 && j == m - 1 {
+        if i == n - 1 && j == m - 1 && min_mom == 0 {
             return cost;
         }
 
-        for (ndir, nmom) in directions(dir, momentum).into_iter() {
+        for (ndir, nmimom, nmamom) in directions(dir, min_mom, max_mom, min_momentum, max_momentum).into_iter() {
             if ndir == Direction::N && i > 0 {
-                q.push(Reverse((cost + loss_at(i - 1, j), ndir, nmom, i - 1, j)));
+                q.push(Reverse((cost + loss_at(i - 1, j), ndir, nmimom, nmamom, i - 1, j)));
             } else if ndir == Direction::E && j + 1 < m {
-                q.push(Reverse((cost + loss_at(i, j + 1), ndir, nmom, i, j + 1)));
+                q.push(Reverse((cost + loss_at(i, j + 1), ndir, nmimom, nmamom, i, j + 1)));
             } else if ndir == Direction::S && i + 1 < n {
-                q.push(Reverse((cost + loss_at(i + 1, j), ndir, nmom, i + 1, j)));
+                q.push(Reverse((cost + loss_at(i + 1, j), ndir, nmimom, nmamom, i + 1, j)));
             } else if ndir == Direction::W && j > 0 {
-                q.push(Reverse((cost + loss_at(i, j - 1), ndir, nmom, i, j - 1)));
+                q.push(Reverse((cost + loss_at(i, j - 1), ndir, nmimom, nmamom, i, j - 1)));
             }
         }
     }
@@ -80,9 +96,13 @@ fn solve(lines: &[String]) -> usize {
     0
 }
 
+fn solve(lines: &[String]) -> usize {
+    dijkstra(lines, 0, 3)
+}
+
 // ----------------------------------------------------------------------------
 fn solve2(lines: &[String]) -> usize {
-    0
+    dijkstra(lines, 4, 10)
 }
 
 // ----------------------------------------------------------------------------
@@ -127,7 +147,19 @@ mod tests {
 4322674655533";
         let lines: Vec<String> = input.lines().map(|line| line.to_string()).collect();
         let result = solve2(&lines);
-        assert_eq!(result, 0);
+        assert_eq!(result, 94);
+    }
+
+    #[test]
+    fn test_solution2_2() {
+        let input = r"111111111111
+999999999991
+999999999991
+999999999991
+999999999991";
+        let lines: Vec<String> = input.lines().map(|line| line.to_string()).collect();
+        let result = solve2(&lines);
+        assert_eq!(result, 71);
     }
 }
 
